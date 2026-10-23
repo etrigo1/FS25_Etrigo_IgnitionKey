@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="104">
+    <author>Etrigo</author>
+    <version>1.0.0.0</version>
+
+    <title>
+        <en>Ignition Key</en>
+        <de>Zündschlüssel</de>
+        <pt>Chave de Ignição</pt>
+    </title>
+
+    <description>
+        <en><![CDATA[
+Ignition key on the keyboard, on the normal engine start key.
+
+- Tap: switches the ignition on (dashboard lights up, engine stopped). Tap again to switch it off.
+- Hold: turns the key to start. From off, holding turns the key all the way. Releasing before the engine catches returns to ignition.
+- Tap with the engine running: stops the engine.
+- Leaving the vehicle with the ignition on switches it off.
+
+Only active with automatic engine start disabled. With the hardware ignition lock connected or a helper working, the game works as normal.
+If Advanced Damage System (FS25_AdvancedDamageSystem) is loaded, this mod switches itself off and leaves the key to ADS.
+]]></en>
+        <de><![CDATA[
+Zündschlüssel auf der Tastatur, auf der normalen Motorstart-Taste.
+
+- Tippen: schaltet die Zündung ein (Armaturen leuchten, Motor aus). Nochmals tippen schaltet sie aus.
+- Halten: dreht den Schlüssel zum Starten. Aus AUS dreht Halten den Schlüssel ganz durch. Loslassen vor dem Anspringen kehrt zur Zündung zurück.
+- Tippen bei laufendem Motor: stellt den Motor ab.
+- Beim Aussteigen mit eingeschalteter Zündung wird sie ausgeschaltet.
+
+Nur aktiv bei deaktiviertem automatischen Motorstart. Mit angeschlossenem Hardware-Zündschloss oder aktivem Helfer funktioniert das Spiel wie gewohnt.
+Ist Advanced Damage System (FS25_AdvancedDamageSystem) geladen, schaltet sich dieser Mod ab und überlässt die Taste ADS.
+]]></de>
+        <pt><![CDATA[
+Chave de ignição no teclado, na tecla normal de arranque do motor.
+
+- Toque: liga a ignição (o painel acende, o motor fica parado). Outro toque desliga-a.
+- Manter premido: roda a chave para arrancar. A partir de desligado, segurar roda a chave toda. Se largares antes de o motor pegar, volta à ignição.
+- Toque com o motor a trabalhar: desliga o motor.
+- Sair do veículo com a ignição ligada desliga-a.
+
+Só funciona com o arranque automático do motor desligado. Com o canhão de ignição físico ligado, ou com um trabalhador a trabalhar, o jogo funciona como de origem.
+Se o Advanced Damage System (FS25_AdvancedDamageSystem) estiver carregado, este mod desliga-se sozinho e deixa a tecla ao ADS.
+]]></pt>
+    </description>
+
+    <iconFilename>icon_ignitionKey.dds</iconFilename>
+    <multiplayer supported="true"/>
+
+    <extraSourceFiles>
+        <sourceFile filename="scripts/RegisterIgnitionKey.lua"/>
+    </extraSourceFiles>
+
+    <l10n>
+        <text name="ik_ignitionOn">
+            <en>Ignition on</en>
+            <de>Zündung ein</de>
+            <pt>Ligar ignição</pt>
+        </text>
+        <text name="ik_start">
+            <en>Start engine (hold)</en>
+            <de>Motor starten (halten)</de>
+            <pt>Arrancar (manter)</pt>
+        </text>
+    </l10n>
+</modDesc>
