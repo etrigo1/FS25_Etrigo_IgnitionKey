@@ -17,10 +17,63 @@ IgnitionKey.MOD_NAME = g_currentModName
 IgnitionKey.SPEC_TABLE_NAME = "spec_" .. g_currentModName .. ".ignitionKey"
 
 IgnitionKey.HOLD_TO_CRANK_MS = 350      -- acima disto conta como "manter premido"
+IgnitionKey.DEBUG = true                -- escreve no log.txt a tecla e as mudanças do motor/painel (testes)
 
 
 local function getText(key)
     return g_i18n:getText(key, IgnitionKey.MOD_NAME)
+end
+
+
+--------------------------------------------------------------------------------
+-- Debug: linhas "[IgnitionKey][debug]" no log.txt. Também regista o que faz a
+-- chave de hardware, para comparar os dois caminhos.
+--------------------------------------------------------------------------------
+local function getStateName(motorState)
+    for name, value in pairs(MotorState) do
+        if value == motorState then
+            return name
+        end
+    end
+    return tostring(motorState)
+end
+
+
+local function debugLog(vehicle, fmt, ...)
+    if IgnitionKey.DEBUG then
+        local name = vehicle.getName ~= nil and vehicle:getName() or "?"
+        Logging.info("[IgnitionKey][debug] t=%d %s | " .. fmt, g_time or 0, tostring(name), ...)
+    end
+end
+
+
+-- escreve uma linha sempre que o estado do motor, a hora da ignição, o canhão
+-- ou o valor do painel mudam (só no veículo em que o jogador está)
+local function debugWatch(vehicle, spec)
+    if vehicle.getIsEntered == nil or not vehicle:getIsEntered() then
+        return
+    end
+
+    local motorizedSpec = vehicle.spec_motorized
+    local lockState = "sem canhão"
+    if g_ignitionLockManager ~= nil and g_ignitionLockManager:getIsAvailable() then
+        lockState = tostring(g_ignitionLockManager:getState())
+    end
+
+    local dashboardValue = "-"
+    local valueType = vehicle.ignitionKeyDashboardValueType
+    if valueType ~= nil and valueType.getSourceValue ~= nil then
+        dashboardValue = tostring(valueType:getSourceValue(nil))
+    end
+
+    local snapshot = string.format("motor=%s ignitionTime=%s canhão=%s painel.ignitionState=%s modAtivo=%s",
+        getStateName(vehicle:getMotorState()), tostring(motorizedSpec.motorStateIgnitionTime),
+        lockState, dashboardValue, tostring(IgnitionKey.getIsActive(vehicle)))
+
+    if snapshot ~= spec.debugLastSnapshot then
+        spec.debugLastSnapshot = snapshot
+        debugLog(vehicle, "%s", snapshot)
+    end
 end
 
 
@@ -92,8 +145,10 @@ function IgnitionKey:onRegisterDashboardValueTypes()
         if valueType.fullName == "motorized.ignitionState" then
             local vanillaGetSourceValue = valueType.getSourceValue
             if vanillaGetSourceValue == nil then
+                debugLog(self, "ignitionState sem getSourceValue, painel não substituído")
                 return
             end
+            self.ignitionKeyDashboardValueType = valueType
 
             valueType:setValue(self, function(vehicle, dashboard)
                 if not IgnitionKey.getIsActive(vehicle) then
@@ -133,9 +188,12 @@ function IgnitionKey:onRegisterActionEvents(isActiveForInput, isActiveForInputIg
         return
     end
 
+    local oldActionEventId = motorizedEvents[InputAction.TOGGLE_MOTOR_STATE].actionEventId
     self:removeActionEvent(motorizedEvents, InputAction.TOGGLE_MOTOR_STATE)
 
     local _, actionEventId = self:addActionEvent(motorizedEvents, InputAction.TOGGLE_MOTOR_STATE, self, IgnitionKey.actionEventStartKey, true, true, false, true, nil)
+    debugLog(self, "tecla registada: antiga=%s (ainda existe=%s) nova=%s", tostring(oldActionEventId),
+        tostring(g_inputBinding.events ~= nil and g_inputBinding.events[oldActionEventId] ~= nil), tostring(actionEventId))
     g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_VERY_HIGH)
     g_inputBinding:setActionEventText(actionEventId, self.spec_motorized.turnOnText)
 
@@ -146,6 +204,8 @@ end
 -- inputValue: 1 ao carregar, 0 ao largar
 function IgnitionKey.actionEventStartKey(self, actionName, inputValue, callbackState, isAnalog)
     local isDown = inputValue ~= nil and inputValue > 0
+    debugLog(self, "tecla %s (inputValue=%s) motor=%s modAtivo=%s", isDown and "CARREGADA" or "LARGADA",
+        tostring(inputValue), getStateName(self:getMotorState()), tostring(IgnitionKey.getIsActive(self)))
 
     if not IgnitionKey.getIsActive(self) then
         self.spec_ignitionKey.press = nil
@@ -213,6 +273,10 @@ end
 -- enquanto a tecla está premida: ao fim de HOLD_TO_CRANK_MS arranca
 function IgnitionKey:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
     local spec = self.spec_ignitionKey
+    if spec ~= nil and IgnitionKey.DEBUG and self.isClient then
+        debugWatch(self, spec)
+    end
+
     local press = spec ~= nil and spec.press or nil
     if press == nil or press.cranked then
         return
@@ -236,6 +300,7 @@ function IgnitionKey:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelect
     -- mostra os avisos do jogo se o motor não puder trabalhar (ex.: sem combustível)
     Motorized.actionEventSetMotorStateOn(self, InputAction.MOTOR_STATE_ON, 1, nil, false)
     press.vanillaStart = self:getMotorState() == MotorState.STARTING
+    debugLog(self, "manter premido %d ms -> arranque, motor=%s", g_time - press.startTimeMs, getStateName(self:getMotorState()))
 end
 
 
