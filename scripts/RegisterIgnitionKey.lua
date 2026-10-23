@@ -32,7 +32,7 @@ local function addToVehicleTypes(typeManager)
             Logging.info("[IgnitionKey] %s carregado, mod desligado (a tecla de arranque fica para o ADS)", ADS_MOD_NAME)
             return
         end
-        Logging.info("[IgnitionKey] %s carregado, proteção desligada (teste ao lado do ADS)", ADS_MOD_NAME)
+        Logging.info("[IgnitionKey] %s carregado, a tecla de arranque fica partilhada com o ADS", ADS_MOD_NAME)
     end
 
     local specObject = g_specializationManager:getSpecializationObjectByName(SPEC_FULL_NAME)
@@ -57,6 +57,18 @@ local function addToVehicleTypes(typeManager)
 end
 
 TypeManager.validateTypes = Utils.prependedFunction(TypeManager.validateTypes, addToVehicleTypes)
+
+
+-- Tecla partilhada (ADS): o evento do ADS chama esta função ao carregar, e ela
+-- arrancaria o motor direto. Com o mod ativo e o evento paralelo registado, quem
+-- decide é o mod, por isso não faz nada. Nos outros casos é a função do jogo.
+local vanillaToggleMotorState = Motorized.actionEventToggleMotorState
+Motorized.actionEventToggleMotorState = function(vehicle, ...)
+    if IgnitionKey ~= nil and IgnitionKey.getIsSharingKey(vehicle) and IgnitionKey.getIsActive(vehicle) then
+        return
+    end
+    return vanillaToggleMotorState(vehicle, ...)
+end
 
 
 -- textos da tecla: o Motorized volta a escrevê-los em cada tick

@@ -5,16 +5,22 @@
 --
 --   toque curto     : OFF -> IGNITION, IGNITION -> OFF, motor a trabalhar -> OFF
 --   manter premido  : a partir de OFF roda a chave toda (0 -> 1 -> 2);
---                     a partir de IGNITION arranca; largar em STARTING volta a IGNITION
+--                     a partir de IGNITION arranca; largar em STARTING continua a tentar
 --
 -- Fica vanilla com o arranque automático, o canhão de hardware ou a IA.
 -- A tecla e o temporizador correm só no cliente que conduz; as mudanças de
 -- estado seguem pelos eventos do jogo (setMotorState / startMotor / stopMotor).
+--
+-- Tecla partilhada (ADS carregado): o ADS também tira a tecla ao Motorized e
+-- ganha sempre. O mod não lhe mexe: regista um segundo evento na mesma ação,
+-- com a tabela do mod como dono, e cala o Motorized.actionEventToggleMotorState
+-- que o ADS chama ao carregar (ver RegisterIgnitionKey.lua).
 --------------------------------------------------------------------------------
 
 IgnitionKey = {}
 IgnitionKey.MOD_NAME = g_currentModName
 IgnitionKey.SPEC_TABLE_NAME = "spec_" .. g_currentModName .. ".ignitionKey"
+IgnitionKey.ADS_MOD_NAME = "FS25_AdvancedDamageSystem"
 
 IgnitionKey.HOLD_TO_CRANK_MS = 350      -- acima disto conta como "manter premido"
 -- false = como a chave do jogo: depois de entrar em STARTING, largar a tecla
@@ -102,6 +108,7 @@ function IgnitionKey.registerEventListeners(vehicleType)
     SpecializationUtil.registerEventListener(vehicleType, "onRegisterActionEvents", IgnitionKey)
     SpecializationUtil.registerEventListener(vehicleType, "onUpdate", IgnitionKey)
     SpecializationUtil.registerEventListener(vehicleType, "onLeaveVehicle", IgnitionKey)
+    SpecializationUtil.registerEventListener(vehicleType, "onDelete", IgnitionKey)
 end
 
 
@@ -115,6 +122,37 @@ function IgnitionKey:onLoad(savegame)
 
     -- tecla a meio (só no cliente que conduz)
     spec.press = nil
+
+    -- evento paralelo da tecla partilhada (só com o ADS); o dono é esta tabela
+    spec.vehicle = self
+    spec.sharedActionEventId = nil
+end
+
+
+function IgnitionKey:onDelete()
+    IgnitionKey.removeSharedKeyEvent(self)
+end
+
+
+-- A tecla fica partilhada quando outro mod é dono do TOGGLE_MOTOR_STATE.
+function IgnitionKey.getShareKey()
+    return g_modIsLoaded ~= nil and g_modIsLoaded[IgnitionKey.ADS_MOD_NAME] == true
+end
+
+
+-- true quando o evento paralelo deste veículo está registado
+function IgnitionKey.getIsSharingKey(vehicle)
+    local spec = vehicle ~= nil and vehicle.spec_ignitionKey or nil
+    return spec ~= nil and spec.sharedActionEventId ~= nil
+end
+
+
+function IgnitionKey.removeSharedKeyEvent(vehicle)
+    local spec = vehicle.spec_ignitionKey
+    if spec ~= nil and spec.sharedActionEventId ~= nil then
+        g_inputBinding:removeActionEvent(spec.sharedActionEventId)
+        spec.sharedActionEventId = nil
+    end
 end
 
 
@@ -187,6 +225,14 @@ function IgnitionKey:onRegisterActionEvents(isActiveForInput, isActiveForInputIg
     end
 
     self.spec_ignitionKey.press = nil
+    IgnitionKey.removeSharedKeyEvent(self)
+
+    if IgnitionKey.getShareKey() then
+        if isActiveForInputIgnoreSelection then
+            IgnitionKey.registerSharedKeyEvent(self)
+        end
+        return
+    end
 
     local motorizedEvents = self.spec_motorized.actionEvents
     if motorizedEvents == nil or motorizedEvents[InputAction.TOGGLE_MOTOR_STATE] == nil then
@@ -206,24 +252,57 @@ function IgnitionKey:onRegisterActionEvents(isActiveForInput, isActiveForInputIg
 end
 
 
--- inputValue: 1 ao carregar, 0 ao largar
-function IgnitionKey.actionEventStartKey(self, actionName, inputValue, callbackState, isAnalog)
-    local isDown = inputValue ~= nil and inputValue > 0
-    debugLog(self, "tecla %s (inputValue=%s) motor=%s modAtivo=%s", isDown and "CARREGADA" or "LARGADA",
-        tostring(inputValue), getStateName(self:getMotorState()), tostring(IgnitionKey.getIsActive(self)))
+-- Segundo evento na mesma ação, ao lado do evento do ADS. O dono é a tabela do
+-- mod, por isso nem o ADS nem o jogo (que apaga por veículo) lhe tocam: é o mod
+-- que o apaga (aqui ao registar, ao sair do veículo e no onDelete).
+function IgnitionKey.registerSharedKeyEvent(vehicle)
+    local spec = vehicle.spec_ignitionKey
+    local _, actionEventId = g_inputBinding:registerActionEvent(InputAction.TOGGLE_MOTOR_STATE, spec, IgnitionKey.actionEventSharedKey, true, true, false, true, nil)
 
-    if not IgnitionKey.getIsActive(self) then
-        self.spec_ignitionKey.press = nil
-        if isDown then
-            Motorized.actionEventToggleMotorState(self, actionName, inputValue, callbackState, isAnalog)
+    if actionEventId ~= nil and actionEventId ~= "" then
+        spec.sharedActionEventId = actionEventId
+        -- a ajuda que se vê é a do ADS; não mostrar duas linhas da mesma tecla
+        g_inputBinding:setActionEventTextVisibility(actionEventId, false)
+    end
+
+    debugLog(vehicle, "tecla partilhada com o ADS: evento paralelo registado: id=%s", tostring(spec.sharedActionEventId))
+end
+
+
+-- callback do evento paralelo: o primeiro argumento é a tabela do mod
+function IgnitionKey.actionEventSharedKey(spec, actionName, inputValue, callbackState, isAnalog)
+    if spec ~= nil and spec.vehicle ~= nil then
+        -- inativo: o evento do ADS já chama a função do jogo
+        IgnitionKey.handleKey(spec.vehicle, inputValue, false, actionName, callbackState, isAnalog)
+    end
+end
+
+
+-- callback da tecla que substitui a do Motorized (sem o ADS)
+function IgnitionKey.actionEventStartKey(self, actionName, inputValue, callbackState, isAnalog)
+    IgnitionKey.handleKey(self, inputValue, true, actionName, callbackState, isAnalog)
+end
+
+
+-- inputValue: 1 ao carregar, 0 ao largar
+function IgnitionKey.handleKey(vehicle, inputValue, callVanilla, actionName, callbackState, isAnalog)
+    local isDown = inputValue ~= nil and inputValue > 0
+    debugLog(vehicle, "tecla %s (inputValue=%s) motor=%s modAtivo=%s partilhada=%s", isDown and "CARREGADA" or "LARGADA",
+        tostring(inputValue), getStateName(vehicle:getMotorState()), tostring(IgnitionKey.getIsActive(vehicle)),
+        tostring(not callVanilla))
+
+    if not IgnitionKey.getIsActive(vehicle) then
+        vehicle.spec_ignitionKey.press = nil
+        if isDown and callVanilla then
+            Motorized.actionEventToggleMotorState(vehicle, actionName, inputValue, callbackState, isAnalog)
         end
         return
     end
 
     if isDown then
-        IgnitionKey.onKeyDown(self)
+        IgnitionKey.onKeyDown(vehicle)
     else
-        IgnitionKey.onKeyUp(self)
+        IgnitionKey.onKeyUp(vehicle)
     end
 end
 
@@ -331,6 +410,11 @@ function IgnitionKey:onLeaveVehicle(wasEntered)
     end
 
     spec.press = nil
+
+    -- o jogo só apaga os eventos cujo dono é o veículo
+    if wasEntered then
+        IgnitionKey.removeSharedKeyEvent(self)
+    end
 
     if wasEntered and self:getMotorState() == MotorState.IGNITION
         and not (g_ignitionLockManager ~= nil and g_ignitionLockManager:getIsAvailable()) then
