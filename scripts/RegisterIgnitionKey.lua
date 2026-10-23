@@ -16,6 +16,9 @@ local modDir = g_currentModDirectory
 local modName = g_currentModName
 local SPEC_FULL_NAME = modName .. ".ignitionKey"
 local ADS_MOD_NAME = "FS25_AdvancedDamageSystem"
+-- false = a proteção está desligada para testar ao lado do ADS (2026-10-23).
+-- Pôr a true para o mod se desligar quando o ADS estiver carregado.
+local DISABLE_WITH_ADS = false
 
 g_specializationManager:addSpecialization("ignitionKey", "IgnitionKey", Utils.getFilename("scripts/IgnitionKey.lua", modDir), nil)
 
@@ -25,8 +28,11 @@ local function addToVehicleTypes(typeManager)
     end
 
     if g_modIsLoaded ~= nil and g_modIsLoaded[ADS_MOD_NAME] then
-        Logging.info("[IgnitionKey] %s carregado, mod desligado (a tecla de arranque fica para o ADS)", ADS_MOD_NAME)
-        return
+        if DISABLE_WITH_ADS then
+            Logging.info("[IgnitionKey] %s carregado, mod desligado (a tecla de arranque fica para o ADS)", ADS_MOD_NAME)
+            return
+        end
+        Logging.info("[IgnitionKey] %s carregado, proteção desligada (teste ao lado do ADS)", ADS_MOD_NAME)
     end
 
     local specObject = g_specializationManager:getSpecializationObjectByName(SPEC_FULL_NAME)
