@@ -26,7 +26,7 @@ IgnitionKey.HOLD_TO_CRANK_MS = 350      -- acima disto conta como "manter premid
 -- false = como a chave do jogo: depois de entrar em STARTING, largar a tecla
 -- não para a tentativa de arranque. true = largar volta a IGNITION.
 IgnitionKey.ABORT_START_ON_RELEASE = false
-IgnitionKey.DEBUG = true                -- escreve no log.txt a tecla e as mudanças do motor/painel (testes)
+IgnitionKey.DEBUG = false               -- true: escreve no log.txt a tecla e as mudanças do motor/painel (testes)
 
 
 local function getText(key)
