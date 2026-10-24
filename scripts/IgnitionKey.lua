@@ -54,6 +54,7 @@ local function debugLog(vehicle, fmt, ...)
         Logging.info("[IgnitionKey][debug] t=%d %s | " .. fmt, g_time or 0, tostring(name), ...)
     end
 end
+IgnitionKey.debugLog = debugLog
 
 
 -- escreve uma linha sempre que o estado do motor, a hora da ignição, o canhão
@@ -269,10 +270,52 @@ function IgnitionKey.registerSharedKeyEvent(vehicle)
 end
 
 
+-- O handler da tecla do ADS. Os globais de cada mod ficam no ambiente desse mod
+-- (_G["FS25_AdvancedDamageSystem"]); o global direto fica como alternativa.
+local function getADSStartButtonHandler()
+    local adsEnv = _G[IgnitionKey.ADS_MOD_NAME]
+    local performance = type(adsEnv) == "table" and adsEnv.ADS_VehiclePerformance or nil
+    if type(performance) ~= "table" and type(ADS_VehiclePerformance) == "table" then
+        performance = ADS_VehiclePerformance
+    end
+
+    if performance ~= nil and type(performance.onStartButtonAction) == "function" then
+        return performance.onStartButtonAction
+    end
+    return nil
+end
+
+
+-- Bateria fraca com o ADS (teste de 2026-10-24): o arranque difícil do ADS só
+-- continua enquanto spec_AdvancedDamageSystem.startButtonHeld for true, e esse
+-- valor vem do evento do ADS na mesma tecla, que com os dois eventos pode não
+-- disparar. O evento do mod entrega a tecla também ao handler do ADS. Se o evento
+-- do ADS disparar na mesma, não há problema: o ADS só reage quando o estado da
+-- tecla muda, por isso a segunda chamada não faz nada (nem o arranque direto).
+local function forwardKeyToADS(vehicle, actionName, inputValue, callbackState, isAnalog, ...)
+    local adsSpec = vehicle.spec_AdvancedDamageSystem
+    if adsSpec == nil then
+        return
+    end
+
+    local handler = getADSStartButtonHandler()
+    if handler == nil then
+        debugLog(vehicle, "handler da tecla do ADS não encontrado")
+        return
+    end
+
+    local heldBefore = adsSpec.startButtonHeld
+    handler(vehicle, actionName, inputValue, callbackState, isAnalog, ...)
+    debugLog(vehicle, "tecla entregue ao ADS: startButtonHeld antes=%s depois=%s",
+        tostring(heldBefore), tostring(adsSpec.startButtonHeld))
+end
+
+
 -- callback do evento paralelo: o primeiro argumento é a tabela do mod
-function IgnitionKey.actionEventSharedKey(spec, actionName, inputValue, callbackState, isAnalog)
+function IgnitionKey.actionEventSharedKey(spec, actionName, inputValue, callbackState, isAnalog, ...)
     if spec ~= nil and spec.vehicle ~= nil then
-        -- inativo: o evento do ADS já chama a função do jogo
+        forwardKeyToADS(spec.vehicle, actionName, inputValue, callbackState, isAnalog, ...)
+        -- inativo: o handler do ADS já chama a função do jogo
         IgnitionKey.handleKey(spec.vehicle, inputValue, false, actionName, callbackState, isAnalog)
     end
 end

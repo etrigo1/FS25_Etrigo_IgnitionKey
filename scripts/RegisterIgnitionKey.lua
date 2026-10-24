@@ -65,6 +65,7 @@ TypeManager.validateTypes = Utils.prependedFunction(TypeManager.validateTypes, a
 local vanillaToggleMotorState = Motorized.actionEventToggleMotorState
 Motorized.actionEventToggleMotorState = function(vehicle, ...)
     if IgnitionKey ~= nil and IgnitionKey.getIsSharingKey(vehicle) and IgnitionKey.getIsActive(vehicle) then
+        IgnitionKey.debugLog(vehicle, "arranque direto calado (pedido pela tecla do ADS)")
         return
     end
     return vanillaToggleMotorState(vehicle, ...)
