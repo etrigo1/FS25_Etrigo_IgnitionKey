@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="104">
     <author>Etrigo</author>
-    <version>1.0.0.0</version>
+    <version>1.1.0.0</version>
 
     <title>
         <en>Ignition Key</en>
@@ -18,6 +18,8 @@ Ignition key on the keyboard, on the normal engine start key.
 - Tap with the engine running: stops the engine.
 - Leaving the vehicle with the ignition on switches it off.
 
+Other key modes in modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (default, as above), "twoTaps" (1st tap ignition, 2nd tap start) or "single" (like the base game).
+
 Only active with automatic engine start disabled. With the hardware ignition lock connected or a helper working, the game works as normal.
 If Advanced Damage System (FS25_AdvancedDamageSystem) is loaded, this mod switches itself off and leaves the key to ADS.
 ]]></en>
@@ -29,6 +31,8 @@ Zündschlüssel auf der Tastatur, auf der normalen Motorstart-Taste.
 - Tippen bei laufendem Motor: stellt den Motor ab.
 - Beim Aussteigen mit eingeschalteter Zündung wird sie ausgeschaltet.
 
+Weitere Tastenmodi in modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (Standard, wie oben), "twoTaps" (1. Tippen Zündung, 2. Tippen Start) oder "single" (wie im Grundspiel).
+
 Nur aktiv bei deaktiviertem automatischen Motorstart. Mit angeschlossenem Hardware-Zündschloss oder aktivem Helfer funktioniert das Spiel wie gewohnt.
 Ist Advanced Damage System (FS25_AdvancedDamageSystem) geladen, schaltet sich dieser Mod ab und überlässt die Taste ADS.
 ]]></de>
@@ -39,6 +43,8 @@ Chave de ignição no teclado, na tecla normal de arranque do motor.
 - Manter premido: roda a chave para arrancar. A partir de desligado, segurar roda a chave toda. Se largares antes de o motor pegar, volta à ignição.
 - Toque com o motor a trabalhar: desliga o motor.
 - Sair do veículo com a ignição ligada desliga-a.
+
+Outros modos da tecla em modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (por defeito, como acima), "twoTaps" (1.º toque liga a ignição, 2.º toque arranca) ou "single" (como o jogo base).
 
 Só funciona com o arranque automático do motor desligado. Com o canhão de ignição físico ligado, ou com um trabalhador a trabalhar, o jogo funciona como de origem.
 Se o Advanced Damage System (FS25_AdvancedDamageSystem) estiver carregado, este mod desliga-se sozinho e deixa a tecla ao ADS.
@@ -52,7 +58,37 @@ Se o Advanced Damage System (FS25_AdvancedDamageSystem) estiver carregado, este 
         <sourceFile filename="scripts/RegisterIgnitionKey.lua"/>
     </extraSourceFiles>
 
+    <!-- sem <inputBinding>: a ação não tem tecla por defeito; define-se no menu Controlos -->
+    <actions>
+        <action name="IK_CYCLE_MODE" category="VEHICLE" ignoreComboMask="false"/>
+    </actions>
+
     <l10n>
+        <text name="input_IK_CYCLE_MODE">
+            <en>Ignition key: change mode</en>
+            <de>Zündschlüssel: Modus wechseln</de>
+            <pt>Chave de ignição: mudar modo</pt>
+        </text>
+        <text name="ik_modeChanged">
+            <en>Ignition key: mode %s</en>
+            <de>Zündschlüssel: Modus %s</de>
+            <pt>Chave de ignição: modo %s</pt>
+        </text>
+        <text name="ik_mode_key">
+            <en>Key (tap / hold)</en>
+            <de>Schlüssel (tippen / halten)</de>
+            <pt>Chave (toque / manter)</pt>
+        </text>
+        <text name="ik_mode_twoTaps">
+            <en>Two taps</en>
+            <de>Zweimal tippen</de>
+            <pt>Duas vezes</pt>
+        </text>
+        <text name="ik_mode_single">
+            <en>Single press (base game)</en>
+            <de>Einmal drücken (Grundspiel)</de>
+            <pt>Uma vez (jogo base)</pt>
+        </text>
         <text name="ik_ignitionOn">
             <en>Ignition on</en>
             <de>Zündung ein</de>
@@ -62,6 +98,11 @@ Se o Advanced Damage System (FS25_AdvancedDamageSystem) estiver carregado, este 
             <en>Start engine (hold)</en>
             <de>Motor starten (halten)</de>
             <pt>Arrancar (manter)</pt>
+        </text>
+        <text name="ik_startTap">
+            <en>Start engine</en>
+            <de>Motor starten</de>
+            <pt>Arrancar</pt>
         </text>
     </l10n>
 </modDesc>

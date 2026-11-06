@@ -60,11 +60,12 @@ TypeManager.validateTypes = Utils.prependedFunction(TypeManager.validateTypes, a
 
 
 -- Tecla partilhada (ADS): o evento do ADS chama esta função ao carregar, e ela
--- arrancaria o motor direto. Com o mod ativo e o evento paralelo registado, quem
--- decide é o mod, por isso não faz nada. Nos outros casos é a função do jogo.
+-- arrancaria o motor direto. Com a lógica da chave ativa e o evento paralelo
+-- registado, quem decide é o mod, por isso não faz nada. Nos outros casos
+-- (incluindo o modo "single") é a função do jogo.
 local vanillaToggleMotorState = Motorized.actionEventToggleMotorState
 Motorized.actionEventToggleMotorState = function(vehicle, ...)
-    if IgnitionKey ~= nil and IgnitionKey.getIsSharingKey(vehicle) and IgnitionKey.getIsActive(vehicle) then
+    if IgnitionKey ~= nil and IgnitionKey.getIsSharingKey(vehicle) and IgnitionKey.getIsKeyActive(vehicle) then
         IgnitionKey.debugLog(vehicle, "arranque direto calado (pedido pela tecla do ADS)")
         return
     end

@@ -3,9 +3,13 @@
 -- Especialização: canhão de ignição no teclado, na tecla de arranque do jogo
 -- (TOGGLE_MOTOR_STATE).
 --
+-- Modo "key" (por defeito):
 --   toque curto     : OFF -> IGNITION, IGNITION -> OFF, motor a trabalhar -> OFF
 --   manter premido  : a partir de OFF roda a chave toda (0 -> 1 -> 2);
 --                     a partir de IGNITION arranca; largar em STARTING continua a tentar
+-- Modo "twoTaps": OFF -> IGNITION, IGNITION -> arranca, a trabalhar -> OFF (ao carregar)
+-- Modo "single" : como o jogo base (carregar arranca / desliga)
+-- O modo escolhe-se em modSettings/FS25_Etrigo_IgnitionKey.xml (ver loadSettings).
 --
 -- Fica vanilla com o arranque automático, o canhão de hardware ou a IA.
 -- A tecla e o temporizador correm só no cliente que conduz; as mudanças de
@@ -22,15 +26,93 @@ IgnitionKey.MOD_NAME = g_currentModName
 IgnitionKey.SPEC_TABLE_NAME = "spec_" .. g_currentModName .. ".ignitionKey"
 IgnitionKey.ADS_MOD_NAME = "FS25_AdvancedDamageSystem"
 
+IgnitionKey.MODE_KEY = "key"
+IgnitionKey.MODE_TWO_TAPS = "twoTaps"
+IgnitionKey.MODE_SINGLE = "single"
+IgnitionKey.VALID_MODES = {
+    [IgnitionKey.MODE_KEY] = true,
+    [IgnitionKey.MODE_TWO_TAPS] = true,
+    [IgnitionKey.MODE_SINGLE] = true
+}
+-- ordem da tecla IK_CYCLE_MODE
+IgnitionKey.MODE_ORDER = {IgnitionKey.MODE_KEY, IgnitionKey.MODE_TWO_TAPS, IgnitionKey.MODE_SINGLE}
+
+-- definições do jogador; vêm do ficheiro em loadSettings (estes são os valores por defeito)
+IgnitionKey.startMode = IgnitionKey.MODE_KEY
 IgnitionKey.HOLD_TO_CRANK_MS = 350      -- acima disto conta como "manter premido"
+IgnitionKey.DEBUG = false               -- true: escreve no log.txt a tecla e as mudanças do motor/painel (testes)
+
 -- false = como a chave do jogo: depois de entrar em STARTING, largar a tecla
 -- não para a tentativa de arranque. true = largar volta a IGNITION.
 IgnitionKey.ABORT_START_ON_RELEASE = false
-IgnitionKey.DEBUG = false               -- true: escreve no log.txt a tecla e as mudanças do motor/painel (testes)
+
+IgnitionKey.SETTINGS_FILE_NAME = "modSettings/FS25_Etrigo_IgnitionKey.xml"
+IgnitionKey.HOLD_TO_CRANK_MIN_MS = 100
+IgnitionKey.HOLD_TO_CRANK_MAX_MS = 2000
 
 
 local function getText(key)
     return g_i18n:getText(key, IgnitionKey.MOD_NAME)
+end
+
+
+--------------------------------------------------------------------------------
+-- Definições: modSettings/FS25_Etrigo_IgnitionKey.xml (por jogador)
+-- Lido uma vez; valores em falta ou inválidos ficam com o valor por defeito e
+-- o ficheiro é gravado outra vez completo (na primeira vez aparece sozinho).
+--------------------------------------------------------------------------------
+function IgnitionKey.loadSettings()
+    if IgnitionKey.settingsLoaded then
+        return
+    end
+    IgnitionKey.settingsLoaded = true
+
+    local path = getUserProfileAppPath() .. IgnitionKey.SETTINGS_FILE_NAME
+
+    if fileExists(path) then
+        local xmlFile = loadXMLFile("ignitionKeySettings", path)
+        if xmlFile ~= nil and xmlFile ~= 0 then
+            local debug = getXMLBool(xmlFile, "ignitionKey.debug#enabled")
+            if debug ~= nil then
+                IgnitionKey.DEBUG = debug
+            end
+
+            local mode = getXMLString(xmlFile, "ignitionKey.start#mode")
+            if mode ~= nil and IgnitionKey.VALID_MODES[mode] then
+                IgnitionKey.startMode = mode
+            end
+
+            local holdToCrankMs = getXMLInt(xmlFile, "ignitionKey.start#holdToCrankMs")
+            if holdToCrankMs ~= nil then
+                IgnitionKey.HOLD_TO_CRANK_MS = math.min(math.max(holdToCrankMs, IgnitionKey.HOLD_TO_CRANK_MIN_MS), IgnitionKey.HOLD_TO_CRANK_MAX_MS)
+            end
+
+            delete(xmlFile)
+        end
+    end
+
+    IgnitionKey.saveSettings(path)
+    Logging.info("[IgnitionKey] Definições: mode=%s holdToCrankMs=%d debug=%s", IgnitionKey.startMode,
+        IgnitionKey.HOLD_TO_CRANK_MS, tostring(IgnitionKey.DEBUG))
+end
+
+
+function IgnitionKey.saveSettings(path)
+    createFolder(getUserProfileAppPath() .. "modSettings/")
+
+    local xmlFile = createXMLFile("ignitionKeySettings", path, "ignitionKey")
+    if xmlFile == nil or xmlFile == 0 then
+        return
+    end
+
+    setXMLBool(xmlFile, "ignitionKey.debug#enabled", IgnitionKey.DEBUG)
+    setXMLString(xmlFile, "ignitionKey.start#mode", IgnitionKey.startMode)
+    setXMLInt(xmlFile, "ignitionKey.start#holdToCrankMs", IgnitionKey.HOLD_TO_CRANK_MS)
+    -- só para quem edita o ficheiro: os valores possíveis do mode (explicados no README.md do zip)
+    setXMLString(xmlFile, "ignitionKey.start#modes", "key | twoTaps | single")
+
+    saveXMLFile(xmlFile)
+    delete(xmlFile)
 end
 
 
@@ -117,12 +199,17 @@ end
 -- Ciclo de vida
 --------------------------------------------------------------------------------
 function IgnitionKey:onLoad(savegame)
+    IgnitionKey.loadSettings()
+
     -- a spec é registada como "<modName>.ignitionKey"; atalho com nome simples
     self.spec_ignitionKey = self[IgnitionKey.SPEC_TABLE_NAME] or {}
     local spec = self.spec_ignitionKey
 
     -- tecla a meio (só no cliente que conduz)
     spec.press = nil
+
+    -- ações próprias do mod (IK_CYCLE_MODE); o dono é o veículo
+    spec.actionEvents = {}
 
     -- evento paralelo da tecla partilhada (só com o ADS); o dono é esta tabela
     spec.vehicle = self
@@ -169,6 +256,13 @@ function IgnitionKey.getIsActive(vehicle)
     end
 
     return not vehicle:getIsAIActive()
+end
+
+
+-- A lógica da chave decide a tecla (modos "key" e "twoTaps"). No modo "single"
+-- a tecla segue o caminho do jogo, como no modo vanilla.
+function IgnitionKey.getIsKeyActive(vehicle)
+    return IgnitionKey.startMode ~= IgnitionKey.MODE_SINGLE and IgnitionKey.getIsActive(vehicle)
 end
 
 
@@ -225,8 +319,20 @@ function IgnitionKey:onRegisterActionEvents(isActiveForInput, isActiveForInputIg
         return
     end
 
-    self.spec_ignitionKey.press = nil
+    local spec = self.spec_ignitionKey
+    spec.press = nil
     IgnitionKey.removeSharedKeyEvent(self)
+
+    -- Mudar o modo: sem tecla por defeito (define-se no menu Controlos) e sem
+    -- linha na ajuda do F1; ao carregar só aparece o aviso no topo do ecrã.
+    -- Antes do ramo do ADS: é uma ação nova, funciona com e sem o ADS.
+    self:clearActionEventsTable(spec.actionEvents)
+    if isActiveForInputIgnoreSelection and InputAction.IK_CYCLE_MODE ~= nil then
+        local _, cycleEventId = self:addActionEvent(spec.actionEvents, InputAction.IK_CYCLE_MODE, self, IgnitionKey.actionEventCycleMode, false, true, false, true, nil)
+        if cycleEventId ~= nil and cycleEventId ~= "" then
+            g_inputBinding:setActionEventTextVisibility(cycleEventId, false)
+        end
+    end
 
     if IgnitionKey.getShareKey() then
         if isActiveForInputIgnoreSelection then
@@ -330,11 +436,11 @@ end
 -- inputValue: 1 ao carregar, 0 ao largar
 function IgnitionKey.handleKey(vehicle, inputValue, callVanilla, actionName, callbackState, isAnalog)
     local isDown = inputValue ~= nil and inputValue > 0
-    debugLog(vehicle, "tecla %s (inputValue=%s) motor=%s modAtivo=%s partilhada=%s", isDown and "CARREGADA" or "LARGADA",
-        tostring(inputValue), getStateName(vehicle:getMotorState()), tostring(IgnitionKey.getIsActive(vehicle)),
-        tostring(not callVanilla))
+    debugLog(vehicle, "tecla %s (inputValue=%s) motor=%s modAtivo=%s partilhada=%s modo=%s", isDown and "CARREGADA" or "LARGADA",
+        tostring(inputValue), getStateName(vehicle:getMotorState()), tostring(IgnitionKey.getIsKeyActive(vehicle)),
+        tostring(not callVanilla), IgnitionKey.startMode)
 
-    if not IgnitionKey.getIsActive(vehicle) then
+    if not IgnitionKey.getIsKeyActive(vehicle) then
         vehicle.spec_ignitionKey.press = nil
         if isDown and callVanilla then
             Motorized.actionEventToggleMotorState(vehicle, actionName, inputValue, callbackState, isAnalog)
@@ -342,10 +448,51 @@ function IgnitionKey.handleKey(vehicle, inputValue, callVanilla, actionName, cal
         return
     end
 
-    if isDown then
+    if IgnitionKey.startMode == IgnitionKey.MODE_TWO_TAPS then
+        if isDown then
+            IgnitionKey.onKeyDownTwoTaps(vehicle)
+        end
+    elseif isDown then
         IgnitionKey.onKeyDown(vehicle)
     else
         IgnitionKey.onKeyUp(vehicle)
+    end
+end
+
+
+-- Tecla IK_CYCLE_MODE: key -> twoTaps -> single -> key. Fica gravado no ficheiro
+-- de definições (é por jogador, por isso não precisa de evento de rede).
+function IgnitionKey.actionEventCycleMode(self, actionName, inputValue, callbackState, isAnalog)
+    local nextMode = IgnitionKey.MODE_KEY
+    for i, mode in ipairs(IgnitionKey.MODE_ORDER) do
+        if mode == IgnitionKey.startMode then
+            nextMode = IgnitionKey.MODE_ORDER[i % #IgnitionKey.MODE_ORDER + 1]
+            break
+        end
+    end
+
+    IgnitionKey.startMode = nextMode
+    self.spec_ignitionKey.press = nil
+    IgnitionKey.saveSettings(getUserProfileAppPath() .. IgnitionKey.SETTINGS_FILE_NAME)
+
+    g_currentMission:addIngameNotification(FSBaseMission.INGAME_NOTIFICATION_INFO,
+        string.format(getText("ik_modeChanged"), getText("ik_mode_" .. nextMode)))
+    debugLog(self, "modo mudado para %s", nextMode)
+end
+
+
+-- Modo "twoTaps": tudo ao carregar, como a tecla do jogo. O arranque difícil do
+-- ADS continua enquanto a tecla estiver premida (o ADS recebe carregar/largar).
+function IgnitionKey.onKeyDownTwoTaps(vehicle)
+    local motorState = vehicle:getMotorState()
+    if motorState == MotorState.OFF then
+        vehicle:setMotorState(MotorState.IGNITION)
+    elseif motorState == MotorState.IGNITION then
+        -- mostra os avisos do jogo se o motor não puder trabalhar (ex.: sem combustível)
+        Motorized.actionEventSetMotorStateOn(vehicle, InputAction.MOTOR_STATE_ON, 1, nil, false)
+        debugLog(vehicle, "segundo toque -> arranque, motor=%s", getStateName(vehicle:getMotorState()))
+    elseif isEngineActive(motorState) then
+        vehicle:stopMotor()
     end
 end
 
@@ -423,7 +570,7 @@ function IgnitionKey:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelect
         return
     end
 
-    if not IgnitionKey.getIsActive(self) then
+    if not IgnitionKey.getIsKeyActive(self) then
         spec.press = nil
         return
     end
@@ -474,7 +621,7 @@ function IgnitionKey.updateActionEventText(vehicle)
     end
 
     local actionEvent = vehicle.spec_motorized.actionEvents[InputAction.TOGGLE_MOTOR_STATE]
-    if actionEvent == nil or not IgnitionKey.getIsActive(vehicle) then
+    if actionEvent == nil or not IgnitionKey.getIsKeyActive(vehicle) then
         return
     end
 
@@ -482,6 +629,7 @@ function IgnitionKey.updateActionEventText(vehicle)
     if motorState == MotorState.OFF then
         g_inputBinding:setActionEventText(actionEvent.actionEventId, getText("ik_ignitionOn"))
     elseif motorState == MotorState.IGNITION then
-        g_inputBinding:setActionEventText(actionEvent.actionEventId, getText("ik_start"))
+        local textKey = IgnitionKey.startMode == IgnitionKey.MODE_TWO_TAPS and "ik_startTap" or "ik_start"
+        g_inputBinding:setActionEventText(actionEvent.actionEventId, getText(textKey))
     end
 end
