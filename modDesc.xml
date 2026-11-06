@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="104">
     <author>Etrigo</author>
-    <version>1.1.0.0</version>
+    <version>1.1.0.1</version>
 
     <title>
         <en>Ignition Key</en>
@@ -18,7 +18,7 @@ Ignition key on the keyboard, on the normal engine start key.
 - Tap with the engine running: stops the engine.
 - Leaving the vehicle with the ignition on switches it off.
 
-Other key modes in modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (default, as above), "twoTaps" (1st tap ignition, 2nd tap start) or "single" (like the base game).
+Other key modes in modSettings/IgnitionKey.xml (start mode): "key" (default, as above), "twoTaps" (1st tap ignition, 2nd tap start) or "single" (like the base game).
 
 Only active with automatic engine start disabled. With the hardware ignition lock connected or a helper working, the game works as normal.
 If Advanced Damage System (FS25_AdvancedDamageSystem) is loaded, this mod switches itself off and leaves the key to ADS.
@@ -31,7 +31,7 @@ Zündschlüssel auf der Tastatur, auf der normalen Motorstart-Taste.
 - Tippen bei laufendem Motor: stellt den Motor ab.
 - Beim Aussteigen mit eingeschalteter Zündung wird sie ausgeschaltet.
 
-Weitere Tastenmodi in modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (Standard, wie oben), "twoTaps" (1. Tippen Zündung, 2. Tippen Start) oder "single" (wie im Grundspiel).
+Weitere Tastenmodi in modSettings/IgnitionKey.xml (start mode): "key" (Standard, wie oben), "twoTaps" (1. Tippen Zündung, 2. Tippen Start) oder "single" (wie im Grundspiel).
 
 Nur aktiv bei deaktiviertem automatischen Motorstart. Mit angeschlossenem Hardware-Zündschloss oder aktivem Helfer funktioniert das Spiel wie gewohnt.
 Ist Advanced Damage System (FS25_AdvancedDamageSystem) geladen, schaltet sich dieser Mod ab und überlässt die Taste ADS.
@@ -44,7 +44,7 @@ Chave de ignição no teclado, na tecla normal de arranque do motor.
 - Toque com o motor a trabalhar: desliga o motor.
 - Sair do veículo com a ignição ligada desliga-a.
 
-Outros modos da tecla em modSettings/FS25_Etrigo_IgnitionKey.xml (start mode): "key" (por defeito, como acima), "twoTaps" (1.º toque liga a ignição, 2.º toque arranca) ou "single" (como o jogo base).
+Outros modos da tecla em modSettings/IgnitionKey.xml (start mode): "key" (por defeito, como acima), "twoTaps" (1.º toque liga a ignição, 2.º toque arranca) ou "single" (como o jogo base).
 
 Só funciona com o arranque automático do motor desligado. Com o canhão de ignição físico ligado, ou com um trabalhador a trabalhar, o jogo funciona como de origem.
 Se o Advanced Damage System (FS25_AdvancedDamageSystem) estiver carregado, este mod desliga-se sozinho e deixa a tecla ao ADS.

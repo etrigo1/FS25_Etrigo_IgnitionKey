@@ -1,4 +1,4 @@
-# Ignition Key (FS25_Etrigo_IgnitionKey)
+# Ignition Key (FS25_IgnitionKey)
 
 Farming Simulator 25 mod: a real ignition key on the keyboard, using the normal engine start key. No new key bindings.
 
@@ -38,7 +38,9 @@ In every mode, releasing the key while cranking does not stop the start.
 
 The first time you enter a vehicle, the mod creates this file:
 
-`Documents/My Games/FarmingSimulator2025/modSettings/FS25_Etrigo_IgnitionKey.xml`
+`Documents/My Games/FarmingSimulator2025/modSettings/IgnitionKey.xml`
+
+(Up to 1.1.0.0 it was `FS25_Etrigo_IgnitionKey.xml`. If the new file does not exist yet, the mod reads the old one once and then saves to the new name.)
 
 ```xml
 <ignitionKey>
@@ -67,10 +69,13 @@ Works alongside [FS25_AdvancedDamageSystem](https://github.com/id577/FS25_Advanc
 
 ## Installation
 
-Put `FS25_Etrigo_IgnitionKey.zip` in your `mods` folder (do not unzip it).
+Download `FS25_IgnitionKey.zip` from the [Releases](https://github.com/etrigo1/FS25_Etrigo_IgnitionKey/releases) and put it in your `mods` folder (do not unzip it).
+
+**Updating from 1.1.0.0 or older:** the zip used to be called `FS25_Etrigo_IgnitionKey.zip`. **Delete the old zip** from your `mods` folder, otherwise the game loads the mod twice. Your settings are kept.
 
 ## Versions
 
+- **1.1.0.1** — New names: the zip is `FS25_IgnitionKey.zip` and the settings file is `modSettings/IgnitionKey.xml` (the old file is read once).
 - **1.1.0.0** — Settings file: three key modes (`key`, `twoTaps`, `single`), hold time and debug. Optional key to change the mode in game. README inside the zip.
 - **1.0.0.0** — First release: ignition key on the keyboard, dashboard at ignition, ADS compatible.
 
@@ -117,7 +122,9 @@ Em todos os modos, largar a tecla durante o arranque não o interrompe.
 
 Na primeira vez que entras num veículo, o mod cria este ficheiro:
 
-`Documentos/My Games/FarmingSimulator2025/modSettings/FS25_Etrigo_IgnitionKey.xml`
+`Documentos/My Games/FarmingSimulator2025/modSettings/IgnitionKey.xml`
+
+(Até à 1.1.0.0 chamava-se `FS25_Etrigo_IgnitionKey.xml`. Se o ficheiro novo ainda não existir, o mod lê o antigo uma vez e passa a gravar com o nome novo.)
 
 | Opção | Valores | O que faz |
 |---|---|---|
@@ -139,10 +146,13 @@ Funciona ao lado do Advanced Damage System. A tecla é partilhada com o ADS:
 
 ## Instalação
 
-Põe o `FS25_Etrigo_IgnitionKey.zip` na pasta `mods` (sem descompactar).
+Descarrega o `FS25_IgnitionKey.zip` das [Releases](https://github.com/etrigo1/FS25_Etrigo_IgnitionKey/releases) e põe-no na pasta `mods` (sem descompactar).
+
+**Se vens da 1.1.0.0 ou anterior:** o zip chamava-se `FS25_Etrigo_IgnitionKey.zip`. **Apaga o zip antigo** da pasta `mods`, senão o jogo carrega o mod duas vezes. As tuas definições mantêm-se.
 
 ## Versões
 
+- **1.1.0.1** — Nomes novos: o zip passa a `FS25_IgnitionKey.zip` e o ficheiro de definições a `modSettings/IgnitionKey.xml` (o antigo é lido uma vez).
 - **1.1.0.0** — Ficheiro de definições: três modos da tecla (`key`, `twoTaps`, `single`), tempo de manter premido e debug. Tecla opcional para mudar o modo no jogo. README dentro do zip.
 - **1.0.0.0** — Primeira versão: chave de ignição no teclado, painel em ignição, compatível com o ADS.
 

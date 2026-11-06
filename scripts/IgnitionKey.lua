@@ -9,7 +9,7 @@
 --                     a partir de IGNITION arranca; largar em STARTING continua a tentar
 -- Modo "twoTaps": OFF -> IGNITION, IGNITION -> arranca, a trabalhar -> OFF (ao carregar)
 -- Modo "single" : como o jogo base (carregar arranca / desliga)
--- O modo escolhe-se em modSettings/FS25_Etrigo_IgnitionKey.xml (ver loadSettings).
+-- O modo escolhe-se em modSettings/IgnitionKey.xml (ver loadSettings).
 --
 -- Fica vanilla com o arranque automático, o canhão de hardware ou a IA.
 -- A tecla e o temporizador correm só no cliente que conduz; as mudanças de
@@ -46,7 +46,10 @@ IgnitionKey.DEBUG = false               -- true: escreve no log.txt a tecla e as
 -- não para a tentativa de arranque. true = largar volta a IGNITION.
 IgnitionKey.ABORT_START_ON_RELEASE = false
 
-IgnitionKey.SETTINGS_FILE_NAME = "modSettings/FS25_Etrigo_IgnitionKey.xml"
+-- Nome fixo, sem "Etrigo_" nem "FS25_", e não o g_currentModName: o zip chama-se
+-- Etrigo_IgnitionKey no PC do autor e FS25_IgnitionKey no GitHub (regra dos mods Etrigo).
+IgnitionKey.SETTINGS_FILE_NAME = "modSettings/IgnitionKey.xml"
+IgnitionKey.SETTINGS_FILE_NAME_OLD = "modSettings/FS25_Etrigo_IgnitionKey.xml"   -- até à 1.1.0.0
 IgnitionKey.HOLD_TO_CRANK_MIN_MS = 100
 IgnitionKey.HOLD_TO_CRANK_MAX_MS = 2000
 
@@ -57,7 +60,7 @@ end
 
 
 --------------------------------------------------------------------------------
--- Definições: modSettings/FS25_Etrigo_IgnitionKey.xml (por jogador)
+-- Definições: modSettings/IgnitionKey.xml (por jogador)
 -- Lido uma vez; valores em falta ou inválidos ficam com o valor por defeito e
 -- o ficheiro é gravado outra vez completo (na primeira vez aparece sozinho).
 --------------------------------------------------------------------------------
@@ -69,8 +72,15 @@ function IgnitionKey.loadSettings()
 
     local path = getUserProfileAppPath() .. IgnitionKey.SETTINGS_FILE_NAME
 
-    if fileExists(path) then
-        local xmlFile = loadXMLFile("ignitionKeySettings", path)
+    -- Sem o ficheiro novo, lê uma vez o de nome antigo; a seguir já grava no
+    -- novo. O antigo não se apaga.
+    local readPath = path
+    if not fileExists(path) then
+        readPath = getUserProfileAppPath() .. IgnitionKey.SETTINGS_FILE_NAME_OLD
+    end
+
+    if fileExists(readPath) then
+        local xmlFile = loadXMLFile("ignitionKeySettings", readPath)
         if xmlFile ~= nil and xmlFile ~= 0 then
             local debug = getXMLBool(xmlFile, "ignitionKey.debug#enabled")
             if debug ~= nil then
